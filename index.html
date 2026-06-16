@@ -16,6 +16,11 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #fff; }
     ::-webkit-scrollbar-thumb { background: #ddd; }
+    .edit-btn { background: none; border: none; cursor: pointer; font-size: 11px; color: #aaa; font-family: Arial, Helvetica, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 0; text-decoration: underline; }
+    .edit-btn:hover { color: #000; }
+    .edit-area { width: 100%; border: 1px solid #000; font-size: 14px; padding: 10px 12px; font-family: Arial, Helvetica, sans-serif; line-height: 1.5; resize: none; outline: none; margin-top: 8px; border-radius: 0; }
+    .save-edit-btn { background: #000; color: #fff; border: none; padding: 8px 18px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; font-family: Arial, Helvetica, sans-serif; margin-top: 8px; border-radius: 0; }
+    .cancel-edit-btn { background: none; border: 1px solid #ccc; color: #888; padding: 8px 14px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; font-family: Arial, Helvetica, sans-serif; margin-top: 8px; margin-left: 8px; border-radius: 0; }
   </style>
 </head>
 <body>
@@ -23,7 +28,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // No secrets in frontend — all API calls go through /api/chat
+    const TOPICS_COUNT = 17;
 
     const buildSystemPrompt = (personName, brandName) => `You are the DEORON Copenhagen post-event debrief assistant. DEORON is a design exhibition space that participated in 3 Days of Design at Papiroen (Paper Island) in Copenhagen. The event has just concluded.
 
@@ -32,7 +37,7 @@ You are speaking with ${personName} from ${brandName}.
 CONTEXT ABOUT THE EVENT:
 - 58 designers and brands exhibited
 - The event was well-received overall with good visitor turnout
-- Press coverage included Wallpaper, Hypebeast, Dezeen, Elle Decor, and COEVAL
+- Press coverage included Wallpaper, Hypebeast, Dezeen, Elle Decor, VisualAtelier, COEVAL and many others
 - Sound was a central element of the exhibition
 - Compared to other locations in 3 Days of Design, DEORON was noted as more relaxed, less corporate, less commercial
 - DEORON had a photographer documenting the overall exhibition space, not individual stands. Some exhibitors organised their own photography independently.
@@ -52,8 +57,8 @@ Were they personally at the show, or did someone else represent ${brandName}?
 2. OVERALL IMPRESSION + SPATIAL DESIGN
 How did the experience feel overall. Then explore what they liked and what they did not like about the spatial setup and design: layout, atmosphere, materiality, visual identity of the space.
 
-3. ONE WORD OR PHRASE
-One word or phrase they would use to describe DEORON to a peer. Do not suggest options.
+3. ONE PHRASE OR FEW WORDS
+Ask: "If you had to describe DEORON to a peer in one phrase or a few words, what would you say?" Do not suggest options.
 
 4. WHAT WORKED BEST
 What was the most effective part of the exhibition for them.
@@ -71,7 +76,7 @@ What came out of it concretely. A sale, an order, a collaboration, a lead. Or no
 How did DEORON promote ${brandName} specifically, on the Instagram page, on the website, in the press kit sent to media. Did they feel their work was represented. What was the quality and reach of that promotion from their perspective.
 
 9. PRESS COVERAGE + PHOTOGRAPHY
-On press: did the coverage from Wallpaper, Hypebeast, Dezeen, Elle Decor, COEVAL reach their work specifically, or did it stay at the level of DEORON as a whole. Did they feel featured.
+On press, say something like: "The event got picked up by Wallpaper, Hypebeast, Dezeen, Elle Decor, VisualAtelier, COEVAL and many others. Did any of that coverage reach ${brandName}'s work specifically, or did it stay at the level of DEORON as a whole?"
 On photography: DEORON had a photographer covering the exhibition as a whole, general images of the space, not individual stands. Did they see those images. Did they feel the visual documentation of the event was adequate. Did they organise their own photography, and if so why.
 
 10. EXPECTATIONS + VALUE VS COST
@@ -93,9 +98,12 @@ Anchor in real past experience, not hypotheticals. Ask something like: "Was ther
 What other design weeks or events are they considering in the next 12 months.
 
 16. CLOSE
-Ask if there is a sentence they would be comfortable with DEORON using publicly. Then whether they would return next year. Then whether they would recommend DEORON to another designer or brand.
+Ask if there is a sentence they would be comfortable with DEORON using publicly. Then whether they would come back to next editions of DEORON. Then whether they would recommend DEORON to another designer or brand.
 
-When all topics are covered, output the summary in this exact format with no text before or after the block:
+17. ANYTHING ELSE
+Before generating the summary, always ask: "Is there anything else you want to add, something we have not covered or something you want to make sure gets back to the team?"
+
+When all topics are covered and they have answered topic 17, output the summary in this exact format with no text before or after the block:
 
 ---SUMMARY---
 Exhibitor name: ${personName}
@@ -104,7 +112,7 @@ Present at show: [Yes / No / Partial]
 Overall impression: [1-2 sentences]
 Spatial setup liked: [1 sentence]
 Spatial setup did not like: [1 sentence]
-One word for DEORON: [their word or phrase]
+One phrase for DEORON: [their phrase or words]
 What worked best: [1 sentence]
 Audience quality: [1-2 sentences]
 Key encounters: [all mentioned, 1 sentence each]
@@ -118,34 +126,34 @@ What could be done better: [1-2 sentences]
 Backend process felt supported: [1-2 sentences]
 Unmet needs self-solved problems: [1-2 sentences]
 Events considering next 12 months: [list or 1 sentence]
-Would return: [Yes / No / Maybe, 1 sentence]
+Would return to next editions: [Yes / No / Maybe, 1 sentence]
 Would recommend: [Yes / No / Maybe, 1 sentence]
 Quotable testimonial: [quote if given, otherwise n/a]
+Anything else: [if anything was added, otherwise n/a]
 ---END SUMMARY---
 
 After the block, tell them their responses have been saved and thank them briefly and personally.`;
-
-    const TOPICS_COUNT = 16;
 
     const estimateTopicsHit = (msgs) => {
       const text = msgs.map(m => m.content).join(" ").toLowerCase();
       let count = 0;
       if (/present|attend|there|personally|represent/.test(text)) count++;
       if (/overall|impression|setup|spatial|layout|atmosphere/.test(text)) count++;
-      if (/one word|phrase|describe deoron/.test(text)) count++;
+      if (/phrase|few words|describe deoron/.test(text)) count++;
       if (/worked best|effective|strongest|best part/.test(text)) count++;
       if (/audience|who came|visitors|buyers|right people/.test(text)) count++;
       if (/encounter|worth remembering|people you met|connections/.test(text)) count++;
       if (/commercial|sale|order|collaboration|roi|concrete/.test(text)) count++;
       if (/instagram|ig|website|press kit|promot/.test(text)) count++;
-      if (/press|coverage|photo|shoot|wallpaper|dezeen|hypebeast/.test(text)) count++;
+      if (/press|coverage|photo|shoot|wallpaper|dezeen|hypebeast|visualatelier/.test(text)) count++;
       if (/expect|value|cost|fee|worth it|investment/.test(text)) count++;
       if (/missing|absent|add|lack|wished/.test(text)) count++;
       if (/better|improve|off|inappropriate|could have/.test(text)) count++;
       if (/shipping|application|process|backend|support|assisted/.test(text)) count++;
       if (/solving yourself|not there|needed something|was not there/.test(text)) count++;
       if (/other events|design week|next 12 months|considering/.test(text)) count++;
-      if (/again|return|next year|recommend|testimonial|quote/.test(text)) count++;
+      if (/return|next edition|recommend|testimonial|quote/.test(text)) count++;
+      if (/anything else|anything you want to add|not covered/.test(text)) count++;
       return Math.min(count, TOPICS_COUNT);
     };
 
@@ -179,48 +187,94 @@ After the block, tell them their responses have been saved and thank them briefl
             "Brand / Studio": fields["Brand / Studio"] || "",
             "Present at show": fields["Present at show"] || "",
             "Overall impression": fields["Overall impression"] || "",
-            "Spatial setup — liked": fields["Spatial setup liked"] || "",
-            "Spatial setup — didn't like": fields["Spatial setup did not like"] || "",
-            "One word for DEORON": fields["One word for DEORON"] || "",
+            "Spatial setup liked": fields["Spatial setup liked"] || "",
+            "Spatial setup did not like": fields["Spatial setup did not like"] || "",
+            "One phrase for DEORON": fields["One phrase for DEORON"] || "",
             "What worked best": fields["What worked best"] || "",
             "Audience quality": fields["Audience quality"] || "",
             "Key encounters": fields["Key encounters"] || "",
-            "Commercial outcome / ROI": fields["Commercial outcome ROI"] || "",
-            "DEORON promotion (IG / website / press kit)": fields["DEORON promotion IG website press kit"] || "",
-            "Press coverage — felt featured": fields["Press coverage felt featured"] || "",
-            "Visual documentation / photography": fields["Visual documentation photography"] || "",
-            "Expectations met + value vs cost": fields["Expectations met value vs cost"] || "",
+            "Commercial outcome ROI": fields["Commercial outcome ROI"] || "",
+            "DEORON promotion IG website press kit": fields["DEORON promotion IG website press kit"] || "",
+            "Press coverage felt featured": fields["Press coverage felt featured"] || "",
+            "Visual documentation photography": fields["Visual documentation photography"] || "",
+            "Expectations met value vs cost": fields["Expectations met value vs cost"] || "",
             "What was missing": fields["What was missing"] || "",
             "What could be done better": fields["What could be done better"] || "",
-            "Backend process + felt supported": fields["Backend process felt supported"] || "",
-            "Unmet needs / self-solved problems": fields["Unmet needs self-solved problems"] || "",
-            "Events considering in next 12 months": fields["Events considering next 12 months"] || "",
-            "Would return": fields["Would return"] || "",
+            "Backend process felt supported": fields["Backend process felt supported"] || "",
+            "Unmet needs self-solved problems": fields["Unmet needs self-solved problems"] || "",
+            "Events considering next 12 months": fields["Events considering next 12 months"] || "",
+            "Would return to next editions": fields["Would return to next editions"] || "",
             "Would recommend": fields["Would recommend"] || "",
             "Quotable testimonial": fields["Quotable testimonial"] || "",
+            "Anything else": fields["Anything else"] || "",
           }
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Airtable save failed");
+        throw new Error(JSON.stringify(data));
       }
-      return await response.json();
+      return data;
     };
+
+    function Message({ msg, index, personName, onEdit }) {
+      const [editing, setEditing] = useState(false);
+      const [editValue, setEditValue] = useState(msg.content);
+      const isBot = msg.role === "assistant";
+      const hasSummary = isBot && msg.content.includes("---SUMMARY---");
+      const displayContent = hasSummary
+        ? msg.content.replace(/---SUMMARY---[\s\S]*?---END SUMMARY---/, "").trim()
+        : msg.content;
+
+      const handleSave = () => {
+        onEdit(index, editValue);
+        setEditing(false);
+      };
+
+      if (isBot) {
+        return (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#000", margin: "0 0 6px", fontWeight: 700 }}>DEORON</p>
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: "#000", margin: 0, whiteSpace: "pre-wrap" }}>{displayContent}</p>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#888", margin: "0 0 6px", fontWeight: 700 }}>{personName.toUpperCase()}</p>
+          {editing ? (
+            <div>
+              <textarea
+                className="edit-area"
+                rows={4}
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                autoFocus
+              />
+              <div>
+                <button className="save-edit-btn" onClick={handleSave}>Save</button>
+                <button className="cancel-edit-btn" onClick={() => { setEditing(false); setEditValue(msg.content); }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: 15, lineHeight: 1.75, color: "#444", margin: 0, whiteSpace: "pre-wrap" }}>{msg.content}</p>
+              <button className="edit-btn" onClick={() => setEditing(true)} style={{ marginTop: 6 }}>Edit</button>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     function IntroScreen({ onStart }) {
       const [personName, setPersonName] = useState("");
       const [brandName, setBrandName] = useState("");
       const ready = personName.trim() && brandName.trim();
 
-      const handleStart = () => {
-        if (ready) onStart(personName.trim(), brandName.trim());
-      };
-
-      const handleKey = (e) => {
-        if (e.key === "Enter") handleStart();
-      };
+      const handleStart = () => { if (ready) onStart(personName.trim(), brandName.trim()); };
+      const handleKey = (e) => { if (e.key === "Enter") handleStart(); };
 
       return (
         <div style={{ paddingTop: 8 }}>
@@ -233,31 +287,14 @@ After the block, tell them their responses have been saved and thank them briefl
           <p style={{ fontSize: 15, lineHeight: 1.75, color: "#000", marginBottom: 36, maxWidth: 500 }}>
             It takes about 8 to 10 minutes. We appreciate you taking the time.
           </p>
-
           <label style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10, fontWeight: 700 }}>Your name</label>
-          <input
-            value={personName}
-            onChange={e => setPersonName(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="e.g. Cecilie, Marco, Anna..."
-            autoFocus
-            style={{ display: "block", width: "100%", maxWidth: 340, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", marginBottom: 20, fontFamily: "Arial, Helvetica, sans-serif", borderRadius: 0 }}
-          />
-
+          <input value={personName} onChange={e => setPersonName(e.target.value)} onKeyDown={handleKey} placeholder="e.g. Cecilie, Marco, Anna..." autoFocus
+            style={{ display: "block", width: "100%", maxWidth: 340, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", marginBottom: 20, fontFamily: "Arial, Helvetica, sans-serif", borderRadius: 0 }} />
           <label style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10, fontWeight: 700 }}>Brand / Studio</label>
-          <input
-            value={brandName}
-            onChange={e => setBrandName(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="e.g. Frank, Studio Neri, Resident..."
-            style={{ display: "block", width: "100%", maxWidth: 340, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", fontFamily: "Arial, Helvetica, sans-serif", borderRadius: 0 }}
-          />
-
-          <button
-            onClick={handleStart}
-            disabled={!ready}
-            style={{ marginTop: 24, backgroundColor: "#000", color: "#fff", border: "none", padding: "12px 28px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", cursor: ready ? "pointer" : "default", fontFamily: "Arial, Helvetica, sans-serif", textTransform: "uppercase", borderRadius: 0, opacity: ready ? 1 : 0.3 }}
-          >
+          <input value={brandName} onChange={e => setBrandName(e.target.value)} onKeyDown={handleKey} placeholder="e.g. Frank, Studio Neri, Resident..."
+            style={{ display: "block", width: "100%", maxWidth: 340, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", fontFamily: "Arial, Helvetica, sans-serif", borderRadius: 0 }} />
+          <button onClick={handleStart} disabled={!ready}
+            style={{ marginTop: 24, backgroundColor: "#000", color: "#fff", border: "none", padding: "12px 28px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", cursor: ready ? "pointer" : "default", fontFamily: "Arial, Helvetica, sans-serif", textTransform: "uppercase", borderRadius: 0, opacity: ready ? 1 : 0.3 }}>
             Begin
           </button>
         </div>
@@ -280,30 +317,52 @@ After the block, tell them their responses have been saved and thank them briefl
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       }, [messages, loading]);
 
+      const callAPI = async (msgs, pName, bName) => {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 1000,
+            system: buildSystemPrompt(pName, bName),
+            messages: msgs,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(data));
+        return data.content?.[0]?.text || "...";
+      };
+
       const handleStart = async (pName, bName) => {
         setPersonName(pName);
         setBrandName(bName);
         setScreen("chat");
         setLoading(true);
-
         try {
-          const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-6",
-              max_tokens: 1000,
-              system: buildSystemPrompt(pName, bName),
-              messages: [{ role: "user", content: `Start the debrief. Open with a single brief sentence welcoming ${pName} from ${bName}, then ask your first question. Keep it short and direct.` }],
-            }),
-          });
-          const data = await res.json();
-          const text = data.content?.[0]?.text || "Let's begin.";
+          const text = await callAPI([{ role: "user", content: `Start the debrief. Open with a single brief sentence welcoming ${pName} from ${bName}, then ask your first question. Keep it short and direct.` }], pName, bName);
           const newMessages = [{ role: "assistant", content: text }];
           setMessages(newMessages);
           setTopicsHit(estimateTopicsHit(newMessages));
         } catch {
           setMessages([{ role: "assistant", content: "Something went wrong. Please refresh and try again." }]);
+        }
+        setLoading(false);
+      };
+
+      const handleEdit = async (index, newContent) => {
+        const updated = messages.map((m, i) => i === index ? { ...m, content: newContent } : m);
+        // Truncate everything after the edited message and re-ask
+        const truncated = updated.slice(0, index + 1);
+        setMessages(truncated);
+        setLoading(true);
+        try {
+          const apiMsgs = truncated.map(m => ({ role: m.role, content: m.content }));
+          const text = await callAPI(apiMsgs, personName, brandName);
+          const final = [...truncated, { role: "assistant", content: text }];
+          setMessages(final);
+          setTopicsHit(estimateTopicsHit(final));
+        } catch {
+          setMessages([...truncated, { role: "assistant", content: "Connection issue. Please try again." }]);
         }
         setLoading(false);
       };
@@ -315,24 +374,11 @@ After the block, tell them their responses have been saved and thank them briefl
         setMessages(updated);
         setInput("");
         setLoading(true);
-
         try {
-          const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-6",
-              max_tokens: 1000,
-              system: buildSystemPrompt(personName, brandName),
-              messages: updated.map(m => ({ role: m.role, content: m.content })),
-            }),
-          });
-          const data = await res.json();
-          const text = data.content?.[0]?.text || "...";
+          const text = await callAPI(updated.map(m => ({ role: m.role, content: m.content })), personName, brandName);
           const final = [...updated, { role: "assistant", content: text }];
           setMessages(final);
           setTopicsHit(estimateTopicsHit(final));
-
           const found = extractSummary(text);
           if (found) {
             setSummary(found);
@@ -352,23 +398,16 @@ After the block, tell them their responses have been saved and thank them briefl
       };
 
       const handleKey = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
       };
 
       const progress = Math.round((topicsHit / TOPICS_COUNT) * 100);
 
       return (
         <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
-          {/* Header */}
           <div style={{ padding: "28px 32px 0", borderBottom: "1px solid #000", flexShrink: 0 }}>
             <div style={{ maxWidth: 640, margin: "0 auto" }}>
-              <p style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 8px" }}>
-                3 Days of Design · Copenhagen · 2026
-              </p>
+              <p style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 8px" }}>3 Days of Design · Copenhagen · 2026</p>
               <h1 style={{ fontSize: "clamp(20px, 3.5vw, 28px)", fontWeight: 700, margin: "0 0 20px", lineHeight: 1.15, letterSpacing: "-0.01em" }}>
                 DEORON Copenhagen<br />Exhibitor Feedback
               </h1>
@@ -378,39 +417,19 @@ After the block, tell them their responses have been saved and thank them briefl
             </div>
           </div>
 
-          {/* Body */}
           <div style={{ flex: 1, overflowY: "auto", padding: "32px", maxWidth: 640, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
-
             {screen === "intro" && <IntroScreen onStart={handleStart} />}
-
             {screen === "chat" && (
               <div>
-                {messages.map((msg, i) => {
-                  const isBot = msg.role === "assistant";
-                  const hasSummary = isBot && msg.content.includes("---SUMMARY---");
-                  const displayContent = hasSummary
-                    ? msg.content.replace(/---SUMMARY---[\s\S]*?---END SUMMARY---/, "").trim()
-                    : msg.content;
-
-                  return (
-                    <div key={i} style={{ marginBottom: 28 }}>
-                      <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: isBot ? "#000" : "#888", margin: "0 0 6px", fontWeight: 700 }}>
-                        {isBot ? "DEORON" : personName.toUpperCase()}
-                      </p>
-                      <p style={{ fontSize: 15, lineHeight: 1.75, color: isBot ? "#000" : "#444", margin: 0, whiteSpace: "pre-wrap" }}>
-                        {displayContent}
-                      </p>
-                    </div>
-                  );
-                })}
-
+                {messages.map((msg, i) => (
+                  <Message key={i} msg={msg} index={i} personName={personName} onEdit={handleEdit} />
+                ))}
                 {loading && (
                   <div style={{ marginBottom: 28 }}>
                     <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 6px", fontWeight: 700 }}>DEORON</p>
                     <p style={{ color: "#bbb", fontSize: 20 }}>···</p>
                   </div>
                 )}
-
                 {summary && (
                   <div style={{ marginTop: 8, marginBottom: 28, border: "1px solid #000", padding: "22px 24px" }}>
                     <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 6px", fontWeight: 700 }}>Debrief Summary</p>
@@ -419,41 +438,25 @@ After the block, tell them their responses have been saved and thank them briefl
                       {saveStatus === "saved" && "Saved to DEORON database"}
                       {saveStatus === "error" && "Could not save automatically. Please copy and send to the DEORON team."}
                     </p>
-                    <pre style={{ fontSize: 13, lineHeight: 1.85, color: "#333", margin: 0, whiteSpace: "pre-wrap", fontFamily: "Arial, Helvetica, sans-serif" }}>
-                      {summary}
-                    </pre>
+                    <pre style={{ fontSize: 13, lineHeight: 1.85, color: "#333", margin: 0, whiteSpace: "pre-wrap", fontFamily: "Arial, Helvetica, sans-serif" }}>{summary}</pre>
                   </div>
                 )}
-
                 <div ref={bottomRef} />
               </div>
             )}
           </div>
 
-          {/* Input */}
           {screen === "chat" && !summary && (
             <div style={{ borderTop: "1px solid #000", padding: "16px 32px", flexShrink: 0 }}>
               <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", gap: 10 }}>
-                <textarea
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKey}
-                  placeholder="Type your reply..."
-                  rows={2}
-                  autoFocus
-                  style={{ flex: 1, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", resize: "none", fontFamily: "Arial, Helvetica, sans-serif", lineHeight: 1.5, borderRadius: 0 }}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={loading || !input.trim()}
-                  style={{ backgroundColor: input.trim() && !loading ? "#000" : "#f0f0f0", color: input.trim() && !loading ? "#fff" : "#bbb", border: "1px solid #000", padding: "0 20px", fontSize: 18, cursor: input.trim() && !loading ? "pointer" : "default", transition: "all 0.15s", fontFamily: "Arial, Helvetica, sans-serif", alignSelf: "stretch", borderRadius: 0 }}
-                >
+                <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Type your reply..." rows={2} autoFocus
+                  style={{ flex: 1, border: "1px solid #000", fontSize: 15, padding: "11px 14px", outline: "none", resize: "none", fontFamily: "Arial, Helvetica, sans-serif", lineHeight: 1.5, borderRadius: 0 }} />
+                <button onClick={sendMessage} disabled={loading || !input.trim()}
+                  style={{ backgroundColor: input.trim() && !loading ? "#000" : "#f0f0f0", color: input.trim() && !loading ? "#fff" : "#bbb", border: "1px solid #000", padding: "0 20px", fontSize: 18, cursor: input.trim() && !loading ? "pointer" : "default", transition: "all 0.15s", fontFamily: "Arial, Helvetica, sans-serif", alignSelf: "stretch", borderRadius: 0 }}>
                   →
                 </button>
               </div>
-              <p style={{ fontSize: 11, color: "#ccc", maxWidth: 640, margin: "8px auto 0" }}>
-                Enter to send · Shift+Enter for new line
-              </p>
+              <p style={{ fontSize: 11, color: "#ccc", maxWidth: 640, margin: "8px auto 0" }}>Enter to send · Shift+Enter for new line</p>
             </div>
           )}
         </div>
