@@ -28,7 +28,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    const TOPICS_COUNT = 17;
+    const TOPICS_COUNT = 16;
 
     const buildSystemPrompt = (personName, brandName) => `You are the DEORON Copenhagen post-event debrief assistant. DEORON is a design exhibition space that participated in 3 Days of Design at Papiroen (Paper Island) in Copenhagen. The event has just concluded.
 
@@ -45,6 +45,9 @@ CONTEXT ABOUT THE EVENT:
 YOUR ROLE:
 Have a genuine debrief conversation. One question at a time. Ask open questions only. Never ask yes/no questions, never lead the answer, never suggest what you want to hear. Do not validate, praise, or react positively to answers. Do not say things like "great", "good to hear", "that's interesting", "that makes sense", "totally", or any filler affirmation. Just listen, follow threads, and ask the next honest question. If an answer opens something worth exploring, stay with it before moving on.
 
+FOLLOW-UP QUESTION JUDGEMENT — this is critical:
+Only ask a follow-up when the answer is vague, incomplete, or raises something genuinely worth unpacking. Do NOT ask follow-ups when the answer is already self-evident. Examples of bad follow-ups to avoid: if someone says "not enough photos were posted during the event", do not ask what they would have liked — it is obvious they wanted more photos posted. If someone says "the wood material choice was great", do not ask why wood was good — the point is clear. If someone says communication could have been better, do not ask how — move on unless there is a specific unexplored thread. Ask follow-ups only when the answer is genuinely ambiguous or when a specific detail would add real value to the debrief.
+
 Do not use em dashes anywhere in your responses. Use commas, colons, or short separate sentences instead.
 
 TONE: Personal and relatable. Direct but human. Like a conversation between two people who worked on something together and are now being honest about how it went. Short sentences. No corporate language. No performance of warmth, just real curiosity.
@@ -57,53 +60,50 @@ Were they personally at the show, or did someone else represent ${brandName}?
 2. OVERALL IMPRESSION + SPATIAL DESIGN
 How did the experience feel overall. Then explore what they liked and what they did not like about the spatial setup and design: layout, atmosphere, materiality, visual identity of the space.
 
-3. ONE PHRASE OR FEW WORDS
-Ask: "If you had to describe DEORON to a peer in one phrase or a few words, what would you say?" Do not suggest options.
-
-4. WHAT WORKED BEST
+3. WHAT WORKED BEST
 What was the most effective part of the exhibition for them.
 
-5. AUDIENCE + VISIT QUALITY
+4. AUDIENCE + VISIT QUALITY
 Who came through. Were visits substantive. Did the right people show up.
 
-6. CONNECTIONS AND ENCOUNTERS
+5. CONNECTIONS AND ENCOUNTERS
 Ask which encounters were worth remembering, all of them, not just one. Give them space to go through each one.
 
-7. COMMERCIAL OUTCOME / ROI
+6. COMMERCIAL OUTCOME / ROI
 What came out of it concretely. A sale, an order, a collaboration, a lead. Or nothing, that is fine too.
 
-8. PROMOTION: DEORON INSTAGRAM, WEBSITE, PRESS KIT
+7. PROMOTION: DEORON INSTAGRAM, WEBSITE, PRESS KIT
 How did DEORON promote ${brandName} specifically, on the Instagram page, on the website, in the press kit sent to media. Did they feel their work was represented. What was the quality and reach of that promotion from their perspective.
 
-9. PRESS COVERAGE + PHOTOGRAPHY
+8. PRESS COVERAGE + PHOTOGRAPHY
 On press, say something like: "The event got picked up by Wallpaper, Hypebeast, Dezeen, Elle Decor, VisualAtelier, COEVAL and many others. Did any of that coverage reach ${brandName}'s work specifically, or did it stay at the level of DEORON as a whole?"
 On photography: DEORON had a photographer covering the exhibition as a whole, general images of the space, not individual stands. Did they see those images. Did they feel the visual documentation of the event was adequate. Did they organise their own photography, and if so why.
 
-10. EXPECTATIONS + VALUE VS COST
+9. EXPECTATIONS + VALUE VS COST
 Did the experience meet their expectations. Did it feel worth the investment in time and money.
 
-11. WHAT WAS MISSING
+10. WHAT WAS MISSING
 What would they add to the next edition. What felt absent.
 
-12. WHAT COULD BE DONE BETTER
+11. WHAT COULD BE DONE BETTER
 What was off, or could be improved.
 
-13. BACKEND PROCESS + FEELING SUPPORTED
+12. BACKEND PROCESS + FEELING SUPPORTED
 The full practical journey from application to getting work shipped back. Was it clear and smooth. Did they feel assisted and taken care of at each stage, before, during, and after.
 
-14. UNMET NEEDS
+13. UNMET NEEDS
 Anchor in real past experience, not hypotheticals. Ask something like: "Was there a moment during the whole process where you found yourself solving something that you felt should have been handled for you?" or "Was there something you needed that just was not there?" Never suggest specific services. Let them surface the need themselves.
 
-15. COMPETITIVE LANDSCAPE
+14. COMPETITIVE LANDSCAPE
 What other design weeks or events are they considering in the next 12 months.
 
+15. ANYTHING ELSE
+Ask: "Is there anything else you want to add, something we have not covered or something you want to make sure gets back to the team?"
+
 16. CLOSE
-Ask if there is a sentence they would be comfortable with DEORON using publicly. Then whether they would come back to next editions of DEORON. Then whether they would recommend DEORON to another designer or brand.
+Ask if there is a phrase or a few words they would use to describe DEORON to a peer. Then ask if there is a sentence they would be comfortable with DEORON using publicly. Then whether they would come back to next editions of DEORON. Then whether they would recommend DEORON to another designer or brand. Take these one at a time, do not ask them all at once.
 
-17. ANYTHING ELSE
-Before generating the summary, always ask: "Is there anything else you want to add, something we have not covered or something you want to make sure gets back to the team?"
-
-When all topics are covered and they have answered topic 17, output the summary in this exact format with no text before or after the block:
+When all topics are covered, output the summary in this exact format with no text before or after the block:
 
 ---SUMMARY---
 Exhibitor name: ${personName}
@@ -112,7 +112,6 @@ Present at show: [Yes / No / Partial]
 Overall impression: [1-2 sentences]
 Spatial setup liked: [1 sentence]
 Spatial setup did not like: [1 sentence]
-One phrase for DEORON: [their phrase or words]
 What worked best: [1 sentence]
 Audience quality: [1-2 sentences]
 Key encounters: [all mentioned, 1 sentence each]
@@ -126,6 +125,7 @@ What could be done better: [1-2 sentences]
 Backend process felt supported: [1-2 sentences]
 Unmet needs self-solved problems: [1-2 sentences]
 Events considering next 12 months: [list or 1 sentence]
+One phrase for DEORON: [their phrase or words]
 Would return to next editions: [Yes / No / Maybe, 1 sentence]
 Would recommend: [Yes / No / Maybe, 1 sentence]
 Quotable testimonial: [quote if given, otherwise n/a]
@@ -139,7 +139,6 @@ After the block, tell them their responses have been saved and thank them briefl
       let count = 0;
       if (/present|attend|there|personally|represent/.test(text)) count++;
       if (/overall|impression|setup|spatial|layout|atmosphere/.test(text)) count++;
-      if (/phrase|few words|describe deoron/.test(text)) count++;
       if (/worked best|effective|strongest|best part/.test(text)) count++;
       if (/audience|who came|visitors|buyers|right people/.test(text)) count++;
       if (/encounter|worth remembering|people you met|connections/.test(text)) count++;
@@ -152,8 +151,8 @@ After the block, tell them their responses have been saved and thank them briefl
       if (/shipping|application|process|backend|support|assisted/.test(text)) count++;
       if (/solving yourself|not there|needed something|was not there/.test(text)) count++;
       if (/other events|design week|next 12 months|considering/.test(text)) count++;
-      if (/return|next edition|recommend|testimonial|quote/.test(text)) count++;
       if (/anything else|anything you want to add|not covered/.test(text)) count++;
+      if (/return|next edition|recommend|testimonial|quote|phrase/.test(text)) count++;
       return Math.min(count, TOPICS_COUNT);
     };
 
@@ -189,7 +188,6 @@ After the block, tell them their responses have been saved and thank them briefl
             "Overall impression": fields["Overall impression"] || "",
             "Spatial setup liked": fields["Spatial setup liked"] || "",
             "Spatial setup did not like": fields["Spatial setup did not like"] || "",
-            "One phrase for DEORON": fields["One phrase for DEORON"] || "",
             "What worked best": fields["What worked best"] || "",
             "Audience quality": fields["Audience quality"] || "",
             "Key encounters": fields["Key encounters"] || "",
@@ -203,6 +201,7 @@ After the block, tell them their responses have been saved and thank them briefl
             "Backend process felt supported": fields["Backend process felt supported"] || "",
             "Unmet needs self-solved problems": fields["Unmet needs self-solved problems"] || "",
             "Events considering next 12 months": fields["Events considering next 12 months"] || "",
+            "One phrase for DEORON": fields["One phrase for DEORON"] || "",
             "Would return to next editions": fields["Would return to next editions"] || "",
             "Would recommend": fields["Would recommend"] || "",
             "Quotable testimonial": fields["Quotable testimonial"] || "",
@@ -210,11 +209,8 @@ After the block, tell them their responses have been saved and thank them briefl
           }
         }),
       });
-
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(JSON.stringify(data));
-      }
+      if (!response.ok) throw new Error(JSON.stringify(data));
       return data;
     };
 
@@ -226,11 +222,7 @@ After the block, tell them their responses have been saved and thank them briefl
       const displayContent = hasSummary
         ? msg.content.replace(/---SUMMARY---[\s\S]*?---END SUMMARY---/, "").trim()
         : msg.content;
-
-      const handleSave = () => {
-        onEdit(index, editValue);
-        setEditing(false);
-      };
+      const handleSave = () => { onEdit(index, editValue); setEditing(false); };
 
       if (isBot) {
         return (
@@ -246,13 +238,7 @@ After the block, tell them their responses have been saved and thank them briefl
           <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#888", margin: "0 0 6px", fontWeight: 700 }}>{personName.toUpperCase()}</p>
           {editing ? (
             <div>
-              <textarea
-                className="edit-area"
-                rows={4}
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                autoFocus
-              />
+              <textarea className="edit-area" rows={4} value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus />
               <div>
                 <button className="save-edit-btn" onClick={handleSave}>Save</button>
                 <button className="cancel-edit-btn" onClick={() => { setEditing(false); setEditValue(msg.content); }}>Cancel</button>
@@ -272,7 +258,6 @@ After the block, tell them their responses have been saved and thank them briefl
       const [personName, setPersonName] = useState("");
       const [brandName, setBrandName] = useState("");
       const ready = personName.trim() && brandName.trim();
-
       const handleStart = () => { if (ready) onStart(personName.trim(), brandName.trim()); };
       const handleKey = (e) => { if (e.key === "Enter") handleStart(); };
 
@@ -351,13 +336,11 @@ After the block, tell them their responses have been saved and thank them briefl
 
       const handleEdit = async (index, newContent) => {
         const updated = messages.map((m, i) => i === index ? { ...m, content: newContent } : m);
-        // Truncate everything after the edited message and re-ask
         const truncated = updated.slice(0, index + 1);
         setMessages(truncated);
         setLoading(true);
         try {
-          const apiMsgs = truncated.map(m => ({ role: m.role, content: m.content }));
-          const text = await callAPI(apiMsgs, personName, brandName);
+          const text = await callAPI(truncated.map(m => ({ role: m.role, content: m.content })), personName, brandName);
           const final = [...truncated, { role: "assistant", content: text }];
           setMessages(final);
           setTopicsHit(estimateTopicsHit(final));
