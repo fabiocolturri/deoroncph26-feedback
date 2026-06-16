@@ -13,31 +13,36 @@ export default async function handler(req, res) {
 
   if (!anthropicKey) return res.status(500).json({ error: 'Anthropic API key not configured' });
 
-  const { action, ...body } = req.body;
+  const body = req.body;
 
-  // Handle Airtable save
-  if (action === 'save_airtable') {
+  if (body.action === 'save_airtable') {
     if (!airtableToken || !airtableBase || !airtableTable) {
-      return res.status(500).json({ error: 'Airtable not configured' });
+      return res.status(500).json({ error: 'Airtable env vars missing', vars: { airtableToken: !!airtableToken, airtableBase: !!airtableBase, airtableTable: !!airtableTable } });
     }
     try {
-      const response = await fetch(`https://api.airtable.com/v0/${airtableBase}/${airtableTable}`, {
+      const url = `https://api.airtable.com/v0/${airtableBase}/${airtableTable}`;
+      const payload = { fields: body.fields };
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${airtableToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ fields: body.fields }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
-      return res.status(response.status).json(data);
+      if (!response.ok) {
+        return res.status(response.status).json({ error: 'Airtable error', details: data });
+      }
+      return res.status(200).json(data);
     } catch (error) {
       return res.status(500).json({ error: 'Airtable save failed', details: error.message });
     }
   }
 
-  // Handle Anthropic chat
+  // Anthropic chat
   try {
+    const { action, ...chatBody } = body;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -45,11 +50,11 @@ export default async function handler(req, res) {
         'x-api-key': anthropicKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(chatBody),
     });
     const data = await response.json();
     return res.status(response.status).json(data);
   } catch (error) {
-    return res.status(500).json({ error: 'API request failed', details: error.message });
+    return res.status(500).json({ error: 'Anthropic request failed', details: error.message });
   }
 }
