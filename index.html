@@ -101,7 +101,7 @@ What other design weeks or events are they considering in the next 12 months.
 Ask: "Is there anything else you want to add, something we have not covered or something you want to make sure gets back to the team?"
 
 16. CLOSE
-Ask if there is a phrase or a few words they would use to describe DEORON to a peer. Then ask if there is a sentence they would be comfortable with DEORON using publicly. Then whether they would come back to next editions of DEORON. Then whether they would recommend DEORON to another designer or brand. Take these one at a time, do not ask them all at once.
+Ask if there is a phrase or a few words they would use to describe DEORON to a peer. Then ask if there is a sentence they would be comfortable with DEORON using publicly — when they give it, copy it exactly word for word, do not rephrase or summarise it. Then whether they would come back to next editions of DEORON. Then whether they would recommend DEORON to another designer or brand. Take these one at a time, do not ask them all at once.
 
 When all topics are covered, output the summary in this exact format with no text before or after the block:
 
@@ -128,7 +128,7 @@ Events considering next 12 months: [list or 1 sentence]
 One phrase for DEORON: [their phrase or words]
 Would return to next editions: [Yes / No / Maybe, 1 sentence]
 Would recommend: [Yes / No / Maybe, 1 sentence]
-Quotable testimonial: [quote if given, otherwise n/a]
+Quotable testimonial: [copy the exact words the exhibitor used, verbatim, do not rephrase — if none given write n/a]
 Anything else: [if anything was added, otherwise n/a]
 ---END SUMMARY---
 
@@ -174,7 +174,7 @@ After the block, tell them their responses have been saved and thank them briefl
       return fields;
     };
 
-    const saveToAirtable = async (summaryText) => {
+    const saveToAirtable = async (summaryText, transcript) => {
       const fields = parseSummary(summaryText);
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -206,6 +206,7 @@ After the block, tell them their responses have been saved and thank them briefl
             "Would recommend": fields["Would recommend"] || "",
             "Quotable testimonial": fields["Quotable testimonial"] || "",
             "Anything else": fields["Anything else"] || "",
+            "Raw transcript": transcript || "",
           }
         }),
       });
@@ -367,7 +368,11 @@ After the block, tell them their responses have been saved and thank them briefl
             setSummary(found);
             setSaveStatus("saving");
             try {
-              await saveToAirtable(found);
+              const rawTranscript = final
+                .filter(m => !m.content.includes("---SUMMARY---"))
+                .map(m => `${m.role === "user" ? "EXHIBITOR" : "DEORON"}: ${m.content}`)
+                .join("\n\n");
+              await saveToAirtable(found, rawTranscript);
               setSaveStatus("saved");
             } catch(e) {
               console.error("Airtable error:", e);
